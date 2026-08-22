@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Sổ Sách - Tích hợp AI OCR</title>
+    <title>Quản Lý Sổ Sách - Tích hợp AI</title>
     <link rel="icon" type="image/png" href="logo.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -62,7 +62,7 @@
 
 <div class="container">
     <h2>SỔ SÁCH THEO DÕI BÁN TRÂU BÒ</h2>
-    <h4>Quản Lý Sổ Sách - Tích hợp AI OCR</h4>
+    <h4>Quản Lý Sổ Sách - Tích hợp AI</h4>
 
     <div class="summary-box">
         Tổng tiền chưa thanh toán: <span id="total-unpaid">0</span> VNĐ
@@ -223,7 +223,7 @@
             .single();
 
         if (configError || !configData || !configData.value) {
-            alert('Lỗi: Chưa có API Key trong Supabase!');
+            alert('Lỗi: Chưa cấu hình GROQ API Key (gsk_...) trong Supabase!');
             btnOcr.disabled = false;
             btnOcr.innerText = '✨ Quét & Điền AI';
             return;
@@ -234,7 +234,7 @@
         const reader = new FileReader();
         reader.readAsDataURL(fileInput);
         reader.onload = async () => {
-            const base64Image = reader.result; // Data URL đầy đủ
+            const base64Image = reader.result;
 
             const promptText = `Trích xuất thông tin từ hóa đơn này và trả về duy nhất một chuỗi JSON hợp lệ dạng:
 {
@@ -252,7 +252,7 @@
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: "llama-3.2-11b-vision-preview",
+                    model: "llama-3.2-11b-vision-instant",
                     messages: [
                         {
                             role: "user",
@@ -282,16 +282,16 @@
                     document.getElementById('input-export-date').value = result.date;
                 }
 
-                alert('✨ Quét hóa đơn thành công!');
+                alert('✨ Đã quét và tự động điền dữ liệu thành công!');
             } else {
-                console.error('Lỗi Groq:', data);
-                alert('Không thể đọc dữ liệu. Xem log F12!');
+                console.error('Lỗi từ Groq:', data);
+                alert('Không thể nhận diện hình ảnh. Mở F12 để xem log.');
             }
         };
     } catch (e) {
         btnOcr.disabled = false;
         btnOcr.innerText = '✨ Quét & Điền AI';
-        alert('Lỗi: ' + e.message);
+        alert('Lỗi xử lý: ' + e.message);
     }
 }
 </script>
