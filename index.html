@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sổ Sách Quản Lý Trâu Bò</title>
-    <!-- Supabase JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background: #f4f6f9; }
-        .container { max-width: 950px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .container { max-width: 1100px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         h2, h3 { text-align: center; color: #333; margin-top: 0; }
         .summary-box { background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 18px; font-weight: bold; border: 1px solid #ffeeba; text-align: center; }
         .nav { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
@@ -19,7 +18,7 @@
         .btn-secondary { background: #6c757d; }
         .nav .right { margin-left: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #dee2e6; padding: 10px 6px; text-align: center; font-size: 14px; }
+        th, td { border: 1px solid #dee2e6; padding: 10px 8px; text-align: center; font-size: 14px; }
         th { background: #e9ecef; }
         .status-paid { color: #28a745; font-weight: bold; }
         .status-unpaid { color: #dc3545; font-weight: bold; }
@@ -27,10 +26,12 @@
         .form-row { display: flex; gap: 15px; }
         .form-group { margin-bottom: 12px; flex: 1; }
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-        input[type="text"], input[type="date"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="text"], input[type="date"], textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        textarea { height: 70px; resize: vertical; }
         .hidden { display: none !important; }
         img.thumb { max-width: 60px; height: auto; border-radius: 4px; }
         .expr-tag { display: block; color: #0056b3; font-size: 12px; font-style: italic; margin-bottom: 2px; }
+        .code-cell { white-space: pre-line; text-align: left; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -45,7 +46,6 @@
     <div class="nav">
         <button class="btn" onclick="loadData('all')">Xem Tất Cả</button>
         <button class="btn btn-danger" onclick="loadData('unpaid')">Chỉ Chưa Thanh Toán</button>
-        
         <div class="right">
             <button id="btn-login-toggle" class="btn btn-success" onclick="toggleAuth()">Đăng Nhập Admin</button>
         </div>
@@ -53,23 +53,40 @@
 
     <!-- KHU VỰC ADMIN -->
     <div id="admin-section" class="form-card hidden">
-        <h3 id="form-title">Thêm Mới / Nhập Sổ Sách</h3>
+        <h3 id="form-title">Nhập Hóa Đơn Mới</h3>
         <form id="cattle-form" onsubmit="handleSave(event)">
             <input type="hidden" id="edit-id">
-            <div class="form-group">
-                <label id="label-codes">Mã số (VD: 2562, 2563, 2564):</label>
-                <input type="text" id="input-codes" required placeholder="Gõ danh sách mã như hình...">
+            
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label>Tên hàng:</label>
+                    <input type="text" id="input-item-name" placeholder="VD: Bò (9 con)">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Trọng lượng / Công thức tính:</label>
+                    <input type="text" id="input-weight" placeholder="VD: 9x11.6">
+                </div>
             </div>
+
+            <div class="form-group">
+                <label id="label-codes">Mã Số (Xuống dòng hoặc phẩy):</label>
+                <textarea id="input-codes" required placeholder="Gõ dạng:
+2562, 2563, 2564
+2566, 2567, 2568
+2569, 2570, 2565"></textarea>
+            </div>
+
             <div class="form-row">
                 <div class="form-group">
-                    <label>Giá nhập (VNĐ hoặc VD: 9x0+4+4x2):</label>
-                    <input type="text" id="input-import-price" placeholder="VD: 9x0+4+4x2 hoặc 15">
+                    <label>Đơn giá / Giá nhập (VNĐ hoặc 9x0+4+4x2):</label>
+                    <input type="text" id="input-import-price" placeholder="VD: 9x0+4+4x2">
                 </div>
                 <div class="form-group">
-                    <label>Giá bán (VNĐ hoặc VD: 9x0+4+4x2):</label>
-                    <input type="text" id="input-selling-price" placeholder="VD: 9x0+4+4x2 hoặc 15">
+                    <label>Đơn giá / Giá bán (Thành tiền VNĐ):</label>
+                    <input type="text" id="input-selling-price" placeholder="VD: 104.400 hoặc 104400000">
                 </div>
             </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label>Ngày nhập (Ngày mua):</label>
@@ -80,17 +97,20 @@
                     <input type="date" id="input-export-date">
                 </div>
             </div>
+
             <div class="form-group">
                 <label style="cursor: pointer;">
                     <input type="checkbox" id="input-is-paid" checked> 
                     <span style="color: green; font-weight: bold;">Đã thanh toán</span>
                 </label>
             </div>
+
             <div class="form-group">
-                <label>Link Ảnh thực tế / Hóa đơn (Nếu có):</label>
-                <input type="text" id="input-image-url" placeholder="Dán đường dẫn ảnh vào đây...">
+                <label>Link Ảnh thực tế / Hóa đơn:</label>
+                <input type="text" id="input-image-url" placeholder="Dán đường dẫn ảnh hóa đơn...">
             </div>
-            <button type="submit" class="btn btn-success" id="btn-save">Lưu Vào Sổ Sách</button>
+
+            <button type="submit" class="btn btn-success" id="btn-save">Lưu Hóa Đơn</button>
             <button type="button" class="btn btn-secondary hidden" id="btn-cancel" onclick="resetForm()">Hủy Sửa</button>
         </form>
     </div>
@@ -99,11 +119,11 @@
     <table>
         <thead>
             <tr>
-                <th>Mã Số</th>
+                <th>Tên Hàng</th>
+                <th>Mã Số (MTT)</th>
+                <th>Trọng Lượng</th>
                 <th class="admin-col hidden">Giá Nhập</th>
-                <th>Giá Bán</th>
-                <th>Ngày Nhập</th>
-                <th>Ngày Bán</th>
+                <th>Giá Bán (Thành Tiền)</th>
                 <th>Trạng Thái</th>
                 <th>Hình Ảnh</th>
                 <th class="admin-col hidden">Thao Tác</th>
@@ -145,7 +165,6 @@
         let formattedPrice = (numericPrice || 0).toLocaleString('vi-VN');
         if (!rawInput) return formattedPrice;
         let str = rawInput.toString().trim();
-
         if (/[x\*\+\-\/]/.test(str)) {
             return `<span class="expr-tag">${str} =</span><strong>${formattedPrice}</strong>`;
         }
@@ -174,13 +193,10 @@
     async function loadData(filter = 'all') {
         currentFilter = filter;
         let query = supabaseClient.from('cattle').select('*').order('id', { ascending: false });
-        if (filter === 'unpaid') {
-            query = query.eq('is_paid', false);
-        }
+        if (filter === 'unpaid') query = query.eq('is_paid', false);
 
         const { data, error } = await query;
         if (error) {
-            console.error('Lỗi chi tiết:', error);
             alert('Lỗi CSDL: ' + error.message);
             return;
         }
@@ -202,11 +218,11 @@
 
             let row = `
                 <tr>
-                    <td><strong>${item.code}</strong></td>
+                    <td><strong>${item.item_name || 'Bò/Trâu'}</strong></td>
+                    <td class="code-cell">${item.code || '--'}</td>
+                    <td><strong>${item.weight_expr || '--'}</strong></td>
                     <td class="admin-col ${isAdmin ? '' : 'hidden'}">${importDisplay}</td>
                     <td>${sellingDisplay}</td>
-                    <td>${item.import_date ? formatDate(item.import_date) : '--'}</td>
-                    <td>${item.export_date ? formatDate(item.export_date) : '--'}</td>
                     <td>
                         <span class="${item.is_paid ? 'status-paid' : 'status-unpaid'}">
                             ${item.is_paid ? 'Đã TT' : 'Chưa TT'}
@@ -225,72 +241,50 @@
         });
     }
 
-    function formatDate(dateStr) {
-        let d = new Date(dateStr);
-        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-    }
-
-    // === LƯU GIỮ NGUYÊN CHUỖI MÃ SỐ VÀ PHÉP TÍNH ===
     async function handleSave(e) {
         e.preventDefault();
         let editId = document.getElementById('edit-id').value;
-        let codeStr = document.getElementById('input-codes').value.trim();
         
-        let importRaw = String(document.getElementById('input-import-price').value || '').trim();
-        let sellingRaw = String(document.getElementById('input-selling-price').value || '').trim();
-
-        let importPrice = calculatePrice(importRaw);
-        let sellingPrice = calculatePrice(sellingRaw);
-
-        let importDate = document.getElementById('input-import-date').value || null;
-        let exportDate = document.getElementById('input-export-date').value || null;
-        let isPaid = document.getElementById('input-is-paid').checked;
-        let imageUrl = document.getElementById('input-image-url').value.trim() || null;
-
         let payload = {
-            code: codeStr, 
-            import_price: importPrice, 
-            import_price_raw: importRaw,
-            selling_price: sellingPrice,
-            selling_price_raw: sellingRaw,
-            import_date: importDate, 
-            export_date: exportDate, 
-            is_paid: isPaid, 
-            image_url: imageUrl
+            item_name: document.getElementById('input-item-name').value.trim(),
+            weight_expr: document.getElementById('input-weight').value.trim(),
+            code: document.getElementById('input-codes').value.trim(),
+            import_price_raw: String(document.getElementById('input-import-price').value || '').trim(),
+            selling_price_raw: String(document.getElementById('input-selling-price').value || '').trim(),
+            import_price: calculatePrice(document.getElementById('input-import-price').value),
+            selling_price: calculatePrice(document.getElementById('input-selling-price').value),
+            import_date: document.getElementById('input-import-date').value || null,
+            export_date: document.getElementById('input-export-date').value || null,
+            is_paid: document.getElementById('input-is-paid').checked,
+            image_url: document.getElementById('input-image-url').value.trim() || null
         };
 
         if (editId) {
             const { error } = await supabaseClient.from('cattle').update(payload).eq('id', editId);
-            if (error) {
-                alert('Lỗi cập nhật: ' + error.message);
-                return;
-            }
+            if (error) { alert('Lỗi: ' + error.message); return; }
         } else {
             const { error } = await supabaseClient.from('cattle').insert([payload]);
-            if (error) {
-                alert('Lỗi thêm dữ liệu: ' + error.message);
-                return;
-            }
+            if (error) { alert('Lỗi: ' + error.message); return; }
         }
 
-        alert('Đã lưu vào sổ thành công!');
+        alert('Đã lưu thành công!');
         resetForm();
         loadData(currentFilter);
     }
 
     function editItem(item) {
         document.getElementById('edit-id').value = item.id;
-        document.getElementById('input-codes').value = item.code;
-        
+        document.getElementById('input-item-name').value = item.item_name || '';
+        document.getElementById('input-weight').value = item.weight_expr || '';
+        document.getElementById('input-codes').value = item.code || '';
         document.getElementById('input-import-price').value = item.import_price_raw || item.import_price || '';
         document.getElementById('input-selling-price').value = item.selling_price_raw || item.selling_price || '';
-        
         document.getElementById('input-import-date').value = item.import_date;
         document.getElementById('input-export-date').value = item.export_date;
         document.getElementById('input-is-paid').checked = item.is_paid;
         document.getElementById('input-image-url').value = item.image_url || '';
 
-        document.getElementById('form-title').innerText = 'Chỉnh Sửa Dòng Số: ' + item.code;
+        document.getElementById('form-title').innerText = 'Chỉnh Sửa Hóa Đơn';
         document.getElementById('btn-save').innerText = 'Cập Nhật';
         document.getElementById('btn-cancel').classList.remove('hidden');
     }
@@ -298,15 +292,15 @@
     function resetForm() {
         document.getElementById('cattle-form').reset();
         document.getElementById('edit-id').value = '';
-        document.getElementById('form-title').innerText = 'Thêm Mới / Nhập Sổ Sách';
-        document.getElementById('btn-save').innerText = 'Lưu Vào Sổ Sách';
+        document.getElementById('form-title').innerText = 'Nhập Hóa Đơn Mới';
+        document.getElementById('btn-save').innerText = 'Lưu Hóa Đơn';
         document.getElementById('btn-cancel').classList.add('hidden');
         document.getElementById('input-import-date').valueAsDate = new Date();
         document.getElementById('input-export-date').valueAsDate = new Date();
     }
 
     async function deleteItem(id) {
-        if (confirm('Bạn có chắc muốn xóa dòng này?')) {
+        if (confirm('Bạn chắc chắn muốn xóa?')) {
             await supabaseClient.from('cattle').delete().eq('id', id);
             loadData(currentFilter);
         }
