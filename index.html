@@ -260,58 +260,64 @@
     }
 
     // === 6. LƯU DỮ LIỆU ===
-    async function handleSave(e) {
-        e.preventDefault();
-        let editId = document.getElementById('edit-id').value;
-        
-        let importRaw = document.getElementById('input-import-price').value.trim();
-        let sellingRaw = document.getElementById('input-selling-price').value.trim();
+    // === LƯU DỮ LIỆU CHUẨN XÁC ===
+async function handleSave(e) {
+    e.preventDefault();
+    let editId = document.getElementById('edit-id').value;
+    
+    // Lấy chuỗi nhập gốc (Ví dụ: "9x0+4+4x2")
+    let importRaw = String(document.getElementById('input-import-price').value || '').trim();
+    let sellingRaw = String(document.getElementById('input-selling-price').value || '').trim();
 
-        let importPrice = calculatePrice(importRaw);
-        let sellingPrice = calculatePrice(sellingRaw);
+    // Tính ra số tiền VNĐ (Ví dụ: 12000000)
+    let importPrice = calculatePrice(importRaw);
+    let sellingPrice = calculatePrice(sellingRaw);
 
-        let importDate = document.getElementById('input-import-date').value || null;
-        let exportDate = document.getElementById('input-export-date').value || null;
-        let isPaid = document.getElementById('input-is-paid').checked;
-        let imageUrl = document.getElementById('input-image-url').value.trim() || null;
+    let importDate = document.getElementById('input-import-date').value || null;
+    let exportDate = document.getElementById('input-export-date').value || null;
+    let isPaid = document.getElementById('input-is-paid').checked;
+    let imageUrl = document.getElementById('input-image-url').value.trim() || null;
 
-        if (editId) {
-            let code = parseInt(document.getElementById('input-codes').value);
-            const { error } = await supabaseClient.from('cattle').update({
-                code, 
-                import_price: importPrice, 
-                import_price_raw: importRaw,
-                selling_price: sellingPrice,
-                selling_price_raw: sellingRaw,
-                import_date: importDate, 
-                export_date: exportDate, 
-                is_paid: isPaid, 
-                image_url: imageUrl
-            }).eq('id', editId);
-            
-            if (error) alert('Mã số đã tồn tại hoặc có lỗi!');
-        } else {
-            let codes = parseCodes(document.getElementById('input-codes').value);
-            let insertData = codes.map(code => ({
-                code, 
-                import_price: importPrice, 
-                import_price_raw: importRaw,
-                selling_price: sellingPrice,
-                selling_price_raw: sellingRaw,
-                import_date: importDate, 
-                export_date: exportDate, 
-                is_paid: isPaid, 
-                image_url: imageUrl
-            }));
+    let payloadData = {
+        import_price: importPrice, 
+        import_price_raw: importRaw,
+        selling_price: sellingPrice,
+        selling_price_raw: sellingRaw,
+        import_date: importDate, 
+        export_date: exportDate, 
+        is_paid: isPaid, 
+        image_url: imageUrl
+    };
 
-            const { error } = await supabaseClient.from('cattle').upsert(insertData, { onConflict: 'code' });
-            if (error) alert('Lỗi khi thêm dữ liệu!');
+    if (editId) {
+        let code = parseInt(document.getElementById('input-codes').value);
+        payloadData.code = code;
+
+        const { error } = await supabaseClient.from('cattle').update(payloadData).eq('id', editId);
+        if (error) {
+            console.error('Lỗi Update:', error);
+            alert('Lỗi cập nhật: ' + error.message);
+            return;
         }
+    } else {
+        let codes = parseCodes(document.getElementById('input-codes').value);
+        let insertData = codes.map(code => ({
+            code, 
+            ...payloadData
+        }));
 
-        resetForm();
-        loadData(currentFilter);
+        const { error } = await supabaseClient.from('cattle').upsert(insertData, { onConflict: 'code' });
+        if (error) {
+            console.error('Lỗi Insert:', error);
+            alert('Lỗi thêm mới: ' + error.message);
+            return;
+        }
     }
 
+    alert('Đã lưu thành công!');
+    resetForm();
+    loadData(currentFilter);
+}
     // === 7. SỬA & XÓA ===
     function editItem(item) {
         document.getElementById('edit-id').value = item.id;
