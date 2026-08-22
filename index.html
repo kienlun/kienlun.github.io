@@ -7,31 +7,31 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background: #f4f6f9; }
-        .container { max-width: 1150px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        h2, h3 { text-align: center; color: #333; margin-top: 0; }
-        .summary-box { background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 18px; font-weight: bold; border: 1px solid #ffeeba; text-align: center; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #121212; color: #e0e0e0; }
+        .container { max-width: 1150px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2, h3 { text-align: center; color: #ffffff; margin-top: 0; }
+        .summary-box { background: #332b00; color: #ffda6a; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 20px; font-weight: bold; border: 1px solid #665200; text-align: center; }
         .nav { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn { padding: 8px 16px; border-radius: 4px; border: none; background: #007bff; color: white; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn { padding: 8px 16px; border-radius: 4px; border: none; background: #0d6efd; color: white; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; }
         .btn-danger { background: #dc3545; }
-        .btn-success { background: #28a745; }
+        .btn-success { background: #198754; }
         .btn-secondary { background: #6c757d; }
         .nav .right { margin-left: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #dee2e6; padding: 10px 8px; text-align: center; font-size: 14px; }
-        th { background: #e9ecef; }
-        .status-paid { color: #28a745; font-weight: bold; }
-        .status-unpaid { color: #dc3545; font-weight: bold; }
-        .form-card { background: #f8f9fa; padding: 18px; border-radius: 6px; border: 1px solid #e9ecef; margin-bottom: 25px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #1e1e1e; }
+        th, td { border: 1px solid #333333; padding: 12px 10px; text-align: center; font-size: 14px; }
+        th { background: #2a2a2a; color: #ffffff; }
+        .status-paid { color: #2ea043; font-weight: bold; }
+        .status-unpaid { color: #f85149; font-weight: bold; }
+        .form-card { background: #252525; padding: 18px; border-radius: 6px; border: 1px solid #333; margin-bottom: 25px; }
         .form-row { display: flex; gap: 15px; }
         .form-group { margin-bottom: 12px; flex: 1; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-        input[type="text"], input[type="date"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #ccc; }
+        input[type="text"], input[type="date"] { width: 100%; padding: 8px; border: 1px solid #444; background: #121212; color: #fff; border-radius: 4px; }
         .hidden { display: none !important; }
         img.thumb { max-width: 60px; height: auto; border-radius: 4px; }
-        .expr-tag { display: block; color: #0056b3; font-size: 12px; font-style: italic; margin-bottom: 2px; }
-        .code-cell { text-align: center; font-weight: bold; word-break: break-word; }
-        .date-cell { font-size: 13px; color: #000; font-weight: bold; }
+        .expr-tag { display: block; color: #58a6ff; font-size: 12px; font-style: italic; margin-bottom: 2px; }
+        .code-cell { text-align: center; font-weight: bold; word-break: break-word; color: #ffffff; }
+        .date-cell { font-size: 14px; color: #6e7681; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -39,7 +39,7 @@
 <div class="container">
     <h2>SỔ SÁCH THEO DÕI BÁN TRÂU BÒ</h2>
 
-    <!-- KHỐI TỔNG TIỀN CHƯA THANH TOÁN (LUÔN HIỆN PUBLIC DÙ CHƯA ĐĂNG NHẬP) -->
+    <!-- KHỐI TỔNG TIỀN CHƯA THANH TOÁN (LUÔN HIỆN PUBLIC CHO CẢ KHÁCH VÀ ADMIN) -->
     <div class="summary-box">
         Tổng tiền chưa thanh toán: <span id="total-unpaid">0</span> VNĐ
     </div>
@@ -64,8 +64,8 @@
                     <input type="text" id="input-item-name" placeholder="VD: Bò (9 con)">
                 </div>
                 <div class="form-group">
-                    <label>Trọng lượng / Công thức:</label>
-                    <input type="text" id="input-weight" placeholder="VD: 9x11.6">
+                    <label>Ghi chú / Công thức:</label>
+                    <input type="text" id="input-weight" placeholder="VD: Bò đực đẹp">
                 </div>
             </div>
 
@@ -81,7 +81,7 @@
                 </div>
                 <div class="form-group">
                     <label>Giá bán (Thành tiền VNĐ):</label>
-                    <input type="text" id="input-selling-price" placeholder="VD: 104.400 hoặc 104400000">
+                    <input type="text" id="input-selling-price" placeholder="VD: 9x0+4+3 hoặc 7000000">
                 </div>
             </div>
 
@@ -99,7 +99,7 @@
             <div class="form-group">
                 <label style="cursor: pointer;">
                     <input type="checkbox" id="input-is-paid" checked> 
-                    <span style="color: green; font-weight: bold;">Đã thanh toán</span>
+                    <span style="color: #2ea043; font-weight: bold;">Đã thanh toán</span>
                 </label>
             </div>
 
@@ -117,10 +117,9 @@
     <table>
         <thead>
             <tr>
-                <th>Ngày Bán</th>
                 <th>Tên Hàng</th>
                 <th>Mã Số (MTT)</th>
-                <th>Trọng Lượng</th>
+                <th>Ngày Xuất</th>
                 <th class="admin-col hidden">Giá Nhập</th>
                 <th>Giá Bán (Thành Tiền)</th>
                 <th>Trạng Thái</th>
@@ -129,7 +128,7 @@
             </tr>
         </thead>
         <tbody id="table-body">
-            <tr><td colspan="9">Đang tải dữ liệu...</td></tr>
+            <tr><td colspan="8">Đang tải dữ liệu...</td></tr>
         </tbody>
     </table>
 </div>
@@ -147,7 +146,6 @@
     document.getElementById('input-import-date').valueAsDate = new Date();
     document.getElementById('input-export-date').valueAsDate = new Date();
 
-    // Hàm định dạng ngày hiển thị dd/mm/yyyy
     function formatDateDisplay(dateVal) {
         if (!dateVal) return '--';
         let str = dateVal.toString().substring(0, 10);
@@ -158,7 +156,6 @@
         return dateVal;
     }
 
-    // Bung mã viết tắt
     function expandCodeRanges(inputStr) {
         if (!inputStr) return '';
         let parts = inputStr.toString().split(/,|\n/);
@@ -236,7 +233,7 @@
     async function loadData(filter = 'all') {
         currentFilter = filter;
 
-        // Tính tổng tiền chưa thanh toán
+        // BƯỚC 1: Tính toán tổng tiền chưa thanh toán
         const { data: allDataForTotal } = await supabaseClient
             .from('cattle')
             .select('selling_price, is_paid');
@@ -246,7 +243,7 @@
             document.getElementById('total-unpaid').innerText = totalUnpaid.toLocaleString('vi-VN');
         }
 
-        // Tải danh sách
+        // BƯỚC 2: Tải danh sách
         let query = supabaseClient.from('cattle').select('*').order('id', { ascending: false });
         if (filter === 'unpaid') query = query.eq('is_paid', false);
 
@@ -260,7 +257,7 @@
         tbody.innerHTML = '';
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9">Chưa có dữ liệu nào.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8">Chưa có dữ liệu nào.</td></tr>';
             return;
         }
 
@@ -270,16 +267,15 @@
 
             let displayCode = expandCodeRanges(item.code || '');
             
-            // Lấy Ngày Bán (Ưu tiên export_date -> import_date -> created_at)
+            // Lấy Ngày Xuất (Ưu tiên export_date -> import_date -> created_at)
             let rawExportDate = item.export_date || item.import_date || item.created_at;
             let displayExportDate = formatDateDisplay(rawExportDate);
 
             let row = `
                 <tr>
-                    <td class="date-cell">${displayExportDate}</td>
                     <td><strong>${item.item_name || 'Bò/Trâu'}</strong></td>
                     <td class="code-cell">${displayCode || '--'}</td>
-                    <td><strong>${item.weight_expr || '--'}</strong></td>
+                    <td class="date-cell">${displayExportDate}</td>
                     <td class="admin-col ${isAdmin ? '' : 'hidden'}">${importDisplay}</td>
                     <td>${sellingDisplay}</td>
                     <td>
