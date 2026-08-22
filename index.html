@@ -3,42 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 1. ĐỔI TIÊU ĐỀ Ở ĐÂY -->
-    <title>Quản lý</title> 
-    
-    <!-- 2. THÊM/ĐỔI BIỂU TƯỢNG ICON Ở ĐÂY -->
+    <title>Quản Lý Sổ Sách</title>
     <link rel="icon" type="image/png" href="logo.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #121212; color: #e0e0e0; }
-        .container { max-width: 1250px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h2, h3 { text-align: center; color: #ffffff; margin-top: 0; }
-        .summary-box { background: #332b00; color: #ffda6a; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 20px; font-weight: bold; border: 1px solid #665200; text-align: center; }
-        .nav { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn { padding: 8px 16px; border-radius: 4px; border: none; background: #0d6efd; color: white; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 15px 10px; background: #121212; color: #e0e0e0; }
+        .container { max-width: 1250px; margin: auto; background: #1e1e1e; padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2, h3 { text-align: center; color: #ffffff; margin-top: 0; font-size: 20px; }
+        .summary-box { background: #332b00; color: #ffda6a; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 16px; font-weight: bold; border: 1px solid #665200; text-align: center; }
+        .nav { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn { padding: 8px 12px; border-radius: 4px; border: none; background: #0d6efd; color: white; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; font-size: 13px; }
         .btn-danger { background: #dc3545; }
         .btn-success { background: #198754; }
         .btn-secondary { background: #6c757d; }
         .nav .right { margin-left: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #1e1e1e; }
-        th, td { border: 1px solid #333333; padding: 12px 10px; text-align: center; font-size: 14px; }
-        th { background: #2a2a2a; color: #ffffff; }
+        
+        /* KHU VỰC TẠO KHUNG CUỘN NGANG CHO BẢNG */
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; background: #1e1e1e; min-width: 600px; }
+        th, td { border: 1px solid #333333; padding: 10px 8px; text-align: center; font-size: 13px; }
+        th { background: #2a2a2a; color: #ffffff; white-space: nowrap; }
+        
         .status-paid { color: #2ea043; font-weight: bold; }
         .status-unpaid { color: #f85149; font-weight: bold; }
         .profit-pos { color: #2ea043; font-weight: bold; }
         .profit-neg { color: #f85149; font-weight: bold; }
         .profit-zero { color: #8b949e; font-weight: bold; }
-        .form-card { background: #252525; padding: 18px; border-radius: 6px; border: 1px solid #333; margin-bottom: 25px; }
-        .form-row { display: flex; gap: 15px; }
-        .form-group { margin-bottom: 12px; flex: 1; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #ccc; }
-        input[type="text"], input[type="password"], input[type="date"] { width: 100%; padding: 8px; border: 1px solid #444; background: #121212; color: #fff; border-radius: 4px; }
+        .form-card { background: #252525; padding: 15px; border-radius: 6px; border: 1px solid #333; margin-bottom: 20px; }
+        .form-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .form-group { margin-bottom: 10px; flex: 1; min-width: 140px; }
+        label { display: block; font-weight: bold; margin-bottom: 4px; font-size: 13px; color: #ccc; }
+        input[type="text"], input[type="password"], input[type="date"] { width: 100%; padding: 8px; border: 1px solid #444; background: #121212; color: #fff; border-radius: 4px; font-size: 13px; }
         .hidden { display: none !important; }
-        img.thumb { max-width: 60px; height: auto; border-radius: 4px; }
-        .expr-tag { display: block; color: #58a6ff; font-size: 12px; font-style: italic; margin-bottom: 2px; }
+        img.thumb { max-width: 50px; height: auto; border-radius: 4px; }
+        .expr-tag { display: block; color: #58a6ff; font-size: 11px; font-style: italic; margin-bottom: 2px; }
         .code-cell { text-align: center; font-weight: bold; word-break: break-word; color: #ffffff; }
-        .date-cell { font-size: 14px; color: #8b949e; font-weight: bold; }
+        .date-cell { font-size: 13px; color: #8b949e; font-weight: bold; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -60,7 +61,7 @@
 
     <!-- POPUP ĐĂNG NHẬP ADMIN -->
     <div id="login-modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;">
-        <div style="background: #252525; padding: 25px; border-radius: 8px; border: 1px solid #444; width: 320px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
+        <div style="background: #252525; padding: 20px; border-radius: 8px; border: 1px solid #444; width: 90%; max-width: 320px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
             <h3 style="margin-top: 0; text-align: center; color: #fff;">Đăng Nhập Admin</h3>
             <form onsubmit="handleLoginSubmit(event)">
                 <div style="margin-bottom: 12px;">
@@ -140,25 +141,27 @@
         </form>
     </div>
 
-    <!-- BẢNG DỮ LIỆU -->
-    <table>
-        <thead>
-            <tr>
-                <th>Ngày Xuất</th>
-                <th>Tên Hàng</th>
-                <th>Mã Số (MTT)</th>
-                <th class="admin-col hidden">Giá Nhập</th>
-                <th>Giá Bán (Thành Tiền)</th>
-                <th class="admin-col hidden">Lãi / Lỗ</th>
-                <th>Trạng Thái</th>
-                <th>Hình Ảnh</th>
-                <th class="admin-col hidden">Thao Tác</th>
-            </tr>
-        </thead>
-        <tbody id="table-body">
-            <tr><td colspan="9">Đang tải dữ liệu...</td></tr>
-        </tbody>
-    </table>
+    <!-- BẢNG DỮ LIỆU ĐƯỢC BỌC TRONG KHUNG CUỘN NGANG -->
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Ngày Xuất</th>
+                    <th>Tên Hàng</th>
+                    <th>Mã Số (MTT)</th>
+                    <th class="admin-col hidden">Giá Nhập</th>
+                    <th>Giá Bán (Thành Tiền)</th>
+                    <th class="admin-col hidden">Lãi / Lỗ</th>
+                    <th>Trạng Thái</th>
+                    <th>Hình Ảnh</th>
+                    <th class="admin-col hidden">Thao Tác</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <tr><td colspan="9">Đang tải dữ liệu...</td></tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <script>
@@ -312,7 +315,6 @@
             return;
         }
 
-        // Sắp xếp ngày xuất mới nhất lên đầu
         data.sort((a, b) => {
             let dateA = (a.export_date || a.import_date || a.created_at || '1970-01-01').substring(0, 10);
             let dateB = (b.export_date || b.import_date || b.created_at || '1970-01-01').substring(0, 10);
