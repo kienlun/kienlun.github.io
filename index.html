@@ -380,15 +380,55 @@
             tbody.innerHTML += row;
         });
     }
-    // Hàm upload ảnh lên Supabase Storage
-    async function uploadImageToSupabase(file) {
-        let fileExt = file.name.split('.').pop();
-        let fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+    
+    // Hàm tự động nén ảnh trước khi tải lên
+    function compressImage(file, maxWidth = 1200, quality = 0.75) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    let width = img.width;
+                    let height = img.height;
+    
+                    // Co kích thước nếu ảnh quá to
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+    
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+    
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+    
+                    // Chuyển sang định dạng JPEG đã nén
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                            type: 'image/jpeg'
+                        }));
+                    }, 'image/jpeg', quality);
+                };
+            };
+        });
+    }
+    
+    // Hàm Upload ảnh đã nén lên Supabase Storage
+    async function uploadImageToSupabase(originalFile) {
+        // 1. Tự động nén ảnh trước khi gửi
+        const compressedFile = await compressImage(originalFile);
+    
+        let fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.jpg`;
         let filePath = `${fileName}`;
     
+        // 2. Tải file đã nén lên Bucket 'cattle-images'
         let { error: uploadError } = await supabaseClient.storage
             .from('cattle-images')
-            .upload(filePath, file);
+            .upload(filePath, compressedFile);
     
         if (uploadError) {
             alert('Lỗi tải ảnh: ' + uploadError.message);
@@ -399,8 +439,7 @@
         return data.publicUrl;
     }
     
-    // Xử lý khi nhấn nút Lưu Hóa Đơn
-    
+    // Xử lý khi nhấn nút Lưu Hóa Đơn    
     async function handleSave(e) {
         e.preventDefault();
 
