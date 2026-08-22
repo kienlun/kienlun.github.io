@@ -31,7 +31,7 @@
         img.thumb { max-width: 60px; height: auto; border-radius: 4px; }
         .expr-tag { display: block; color: #0056b3; font-size: 12px; font-style: italic; margin-bottom: 2px; }
         .code-cell { text-align: center; font-weight: bold; word-break: break-word; }
-        .date-cell { font-size: 13px; color: #555; font-weight: bold; }
+        .date-cell { font-size: 13px; color: #000; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -39,7 +39,7 @@
 <div class="container">
     <h2>SỔ SÁCH THEO DÕI BÁN TRÂU BÒ</h2>
 
-    <!-- KHỐI TỔNG TIỀN CHƯA THANH TOÁN (LUÔN HIỆN PUBLIC CHO CẢ KHÁCH VÀ ADMIN) -->
+    <!-- KHỐI TỔNG TIỀN CHƯA THANH TOÁN (LUÔN HIỆN PUBLIC DÙ CHƯA ĐĂNG NHẬP) -->
     <div class="summary-box">
         Tổng tiền chưa thanh toán: <span id="total-unpaid">0</span> VNĐ
     </div>
@@ -91,7 +91,7 @@
                     <input type="date" id="input-import-date">
                 </div>
                 <div class="form-group">
-                    <label>Ngày xuất (Ngày bán):</label>
+                    <label>Ngày bán (Ngày xuất):</label>
                     <input type="date" id="input-export-date">
                 </div>
             </div>
@@ -147,17 +147,18 @@
     document.getElementById('input-import-date').valueAsDate = new Date();
     document.getElementById('input-export-date').valueAsDate = new Date();
 
-    // Định dạng hiển thị ngày DD/MM/YYYY
-    function formatDateDisplay(dateStr) {
-        if (!dateStr) return '--';
-        let parts = dateStr.split('-');
+    // Hàm định dạng ngày hiển thị dd/mm/yyyy
+    function formatDateDisplay(dateVal) {
+        if (!dateVal) return '--';
+        let str = dateVal.toString().substring(0, 10);
+        let parts = str.split('-');
         if (parts.length === 3) {
             return `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
-        return dateStr;
+        return dateVal;
     }
 
-    // Tự động bung mã viết tắt
+    // Bung mã viết tắt
     function expandCodeRanges(inputStr) {
         if (!inputStr) return '';
         let parts = inputStr.toString().split(/,|\n/);
@@ -235,18 +236,18 @@
     async function loadData(filter = 'all') {
         currentFilter = filter;
 
-        // BƯỚC 1: Tính toán tổng tiền chưa thanh toán của toàn bộ hệ thống
-        const { data: allDataForTotal, error: errTotal } = await supabaseClient
+        // Tính tổng tiền chưa thanh toán
+        const { data: allDataForTotal } = await supabaseClient
             .from('cattle')
             .select('selling_price, is_paid');
         
-        if (!errTotal && allDataForTotal) {
+        if (allDataForTotal) {
             let totalUnpaid = allDataForTotal.reduce((sum, item) => !item.is_paid ? sum + (item.selling_price || 0) : sum, 0);
             document.getElementById('total-unpaid').innerText = totalUnpaid.toLocaleString('vi-VN');
         }
 
-        // BƯỚC 2: Tải danh sách hiển thị bảng
-        let query = supabaseClient.from('cattle').select('*').order('export_date', { ascending: false });
+        // Tải danh sách
+        let query = supabaseClient.from('cattle').select('*').order('id', { ascending: false });
         if (filter === 'unpaid') query = query.eq('is_paid', false);
 
         const { data, error } = await query;
@@ -268,7 +269,10 @@
             let sellingDisplay = formatPriceDisplay(item.selling_price_raw, item.selling_price);
 
             let displayCode = expandCodeRanges(item.code || '');
-            let displayExportDate = formatDateDisplay(item.export_date || item.import_date);
+            
+            // Lấy Ngày Bán (Ưu tiên export_date -> import_date -> created_at)
+            let rawExportDate = item.export_date || item.import_date || item.created_at;
+            let displayExportDate = formatDateDisplay(rawExportDate);
 
             let row = `
                 <tr>
@@ -303,6 +307,9 @@
         let rawCodeInput = document.getElementById('input-codes').value.trim();
         let expandedCodes = expandCodeRanges(rawCodeInput);
 
+        let importDateVal = document.getElementById('input-import-date').value || new Date().toISOString().split('T')[0];
+        let exportDateVal = document.getElementById('input-export-date').value || importDateVal;
+
         let payload = {
             item_name: document.getElementById('input-item-name').value.trim(),
             weight_expr: document.getElementById('input-weight').value.trim(),
@@ -311,8 +318,8 @@
             selling_price_raw: String(document.getElementById('input-selling-price').value || '').trim(),
             import_price: calculatePrice(document.getElementById('input-import-price').value),
             selling_price: calculatePrice(document.getElementById('input-selling-price').value),
-            import_date: document.getElementById('input-import-date').value || null,
-            export_date: document.getElementById('input-export-date').value || null,
+            import_date: importDateVal,
+            export_date: exportDateVal,
             is_paid: document.getElementById('input-is-paid').checked,
             image_url: document.getElementById('input-image-url').value.trim() || null
         };
@@ -337,8 +344,8 @@
         document.getElementById('input-codes').value = item.code || '';
         document.getElementById('input-import-price').value = item.import_price_raw || item.import_price || '';
         document.getElementById('input-selling-price').value = item.selling_price_raw || item.selling_price || '';
-        document.getElementById('input-import-date').value = item.import_date;
-        document.getElementById('input-export-date').value = item.export_date;
+        document.getElementById('input-import-date').value = item.import_date || '';
+        document.getElementById('input-export-date').value = item.export_date || item.import_date || '';
         document.getElementById('input-is-paid').checked = item.is_paid;
         document.getElementById('input-image-url').value = item.image_url || '';
 
