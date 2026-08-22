@@ -159,7 +159,6 @@
         return dateVal;
     }
 
-    // Bung mã viết tắt và trả về mảng mã
     function expandCodeRanges(inputStr) {
         if (!inputStr) return [];
         let parts = inputStr.toString().split(/,|\n/);
@@ -247,8 +246,13 @@
             document.getElementById('total-unpaid').innerText = totalUnpaid.toLocaleString('vi-VN');
         }
 
-        // Tải danh sách
-        let query = supabaseClient.from('cattle').select('*').order('id', { ascending: false });
+        // Tải danh sách: ƯU TIÊN SẮP XẾP THEO NGÀY XUẤT MỚI NHẤT (export_date giảm dần)
+        let query = supabaseClient
+            .from('cattle')
+            .select('*')
+            .order('export_date', { ascending: false, nullsFirst: false })
+            .order('id', { ascending: false });
+
         if (filter === 'unpaid') query = query.eq('is_paid', false);
 
         const { data, error } = await query;
@@ -274,12 +278,9 @@
             let displayCode = codeList.join(', ');
             let totalCount = codeList.length;
 
-            // Lấy tên hàng gốc
             let baseName = item.item_name || 'Bò';
-            // Làm sạch nếu tên hàng cũ từng có chứa số con trong ngoặc
             baseName = baseName.replace(/\s*\(\d+\s*con\)/gi, '').trim();
 
-            // Tự động thêm (X con) vào Tên Hàng nếu có danh sách mã số
             let displayName = totalCount > 0 ? `${baseName} (${totalCount} con)` : baseName;
 
             // Ngày Xuất
@@ -367,7 +368,6 @@
     function editItem(item) {
         document.getElementById('edit-id').value = item.id;
         
-        // Loại bỏ phần (X con) nếu có khi sửa để tránh bị nhân đôi
         let cleanName = (item.item_name || '').replace(/\s*\(\d+\s*con\)/gi, '').trim();
         document.getElementById('input-item-name').value = cleanName;
         
