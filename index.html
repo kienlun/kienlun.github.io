@@ -8,7 +8,7 @@
     <style>
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background: #f4f6f9; }
-        .container { max-width: 1100px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .container { max-width: 1150px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         h2, h3 { text-align: center; color: #333; margin-top: 0; }
         .summary-box { background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 18px; font-weight: bold; border: 1px solid #ffeeba; text-align: center; }
         .nav { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
@@ -31,6 +31,7 @@
         img.thumb { max-width: 60px; height: auto; border-radius: 4px; }
         .expr-tag { display: block; color: #0056b3; font-size: 12px; font-style: italic; margin-bottom: 2px; }
         .code-cell { text-align: center; font-weight: bold; word-break: break-word; }
+        .date-cell { font-size: 13px; color: #555; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -38,6 +39,7 @@
 <div class="container">
     <h2>SỔ SÁCH THEO DÕI BÁN TRÂU BÒ</h2>
 
+    <!-- KHỐI TỔNG TIỀN CHƯA THANH TOÁN (LUÔN HIỆN PUBLIC CHO CẢ KHÁCH VÀ ADMIN) -->
     <div class="summary-box">
         Tổng tiền chưa thanh toán: <span id="total-unpaid">0</span> VNĐ
     </div>
@@ -115,6 +117,7 @@
     <table>
         <thead>
             <tr>
+                <th>Ngày Bán</th>
                 <th>Tên Hàng</th>
                 <th>Mã Số (MTT)</th>
                 <th>Trọng Lượng</th>
@@ -126,7 +129,7 @@
             </tr>
         </thead>
         <tbody id="table-body">
-            <tr><td colspan="8">Đang tải dữ liệu...</td></tr>
+            <tr><td colspan="9">Đang tải dữ liệu...</td></tr>
         </tbody>
     </table>
 </div>
@@ -144,11 +147,19 @@
     document.getElementById('input-import-date').valueAsDate = new Date();
     document.getElementById('input-export-date').valueAsDate = new Date();
 
-    // === HÀM XỬ LÝ TRIỆT ĐỂ CHUỖI VIẾT TẮT SANG DÃY SỐ ĐẦY ĐỦ ===
+    // Định dạng hiển thị ngày DD/MM/YYYY
+    function formatDateDisplay(dateStr) {
+        if (!dateStr) return '--';
+        let parts = dateStr.split('-');
+        if (parts.length === 3) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return dateStr;
+    }
+
+    // Tự động bung mã viết tắt
     function expandCodeRanges(inputStr) {
         if (!inputStr) return '';
-        
-        // Cắt theo dấu phẩy hoặc xuống dòng
         let parts = inputStr.toString().split(/,|\n/);
         let resultCodes = [];
 
@@ -156,7 +167,6 @@
             part = part.trim();
             if (!part) return;
 
-            // Xử lý dấu gạch ngang (chấp nhận cả khoảng trắng ở giữa như "1 - 5" hay "1-5")
             if (part.includes('-')) {
                 let range = part.split('-');
                 if (range.length === 2) {
@@ -224,7 +234,19 @@
 
     async function loadData(filter = 'all') {
         currentFilter = filter;
-        let query = supabaseClient.from('cattle').select('*').order('id', { ascending: false });
+
+        // BƯỚC 1: Tính toán tổng tiền chưa thanh toán của toàn bộ hệ thống
+        const { data: allDataForTotal, error: errTotal } = await supabaseClient
+            .from('cattle')
+            .select('selling_price, is_paid');
+        
+        if (!errTotal && allDataForTotal) {
+            let totalUnpaid = allDataForTotal.reduce((sum, item) => !item.is_paid ? sum + (item.selling_price || 0) : sum, 0);
+            document.getElementById('total-unpaid').innerText = totalUnpaid.toLocaleString('vi-VN');
+        }
+
+        // BƯỚC 2: Tải danh sách hiển thị bảng
+        let query = supabaseClient.from('cattle').select('*').order('export_date', { ascending: false });
         if (filter === 'unpaid') query = query.eq('is_paid', false);
 
         const { data, error } = await query;
@@ -233,14 +255,11 @@
             return;
         }
 
-        let totalUnpaid = data.reduce((sum, item) => !item.is_paid ? sum + (item.selling_price || 0) : sum, 0);
-        document.getElementById('total-unpaid').innerText = totalUnpaid.toLocaleString('vi-VN');
-
         let tbody = document.getElementById('table-body');
         tbody.innerHTML = '';
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8">Chưa có dữ liệu nào.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9">Chưa có dữ liệu nào.</td></tr>';
             return;
         }
 
@@ -248,11 +267,12 @@
             let importDisplay = formatPriceDisplay(item.import_price_raw, item.import_price);
             let sellingDisplay = formatPriceDisplay(item.selling_price_raw, item.selling_price);
 
-            // Tự động bung mã đầy đủ ngay cả với các dòng dữ liệu cũ đã lưu
             let displayCode = expandCodeRanges(item.code || '');
+            let displayExportDate = formatDateDisplay(item.export_date || item.import_date);
 
             let row = `
                 <tr>
+                    <td class="date-cell">${displayExportDate}</td>
                     <td><strong>${item.item_name || 'Bò/Trâu'}</strong></td>
                     <td class="code-cell">${displayCode || '--'}</td>
                     <td><strong>${item.weight_expr || '--'}</strong></td>
@@ -281,7 +301,6 @@
         let editId = document.getElementById('edit-id').value;
         
         let rawCodeInput = document.getElementById('input-codes').value.trim();
-        // Tự động bung dãy mã số đầy đủ
         let expandedCodes = expandCodeRanges(rawCodeInput);
 
         let payload = {
