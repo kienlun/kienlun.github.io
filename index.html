@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Sổ Sách</title>
+    <title>Quản Lý Sổ Sách - Tích hợp AI OCR</title>
     <link rel="icon" type="image/png" href="logo.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -17,6 +17,7 @@
         .btn-danger { background: #dc3545; }
         .btn-success { background: #198754; }
         .btn-secondary { background: #6c757d; }
+        .btn-ai { background: #6f42c1; color: white; font-weight: bold; }
         .nav .right { margin-left: auto; }
         
         .search-box { position: relative; display: flex; align-items: center; }
@@ -99,12 +100,22 @@
         </div>
     </div>
 
-    <!-- KHU VỰC ADMIN (NHẬP HÓA ĐƠN) -->
+    <!-- KHU VỰC ADMIN (NHẬP HÓA ĐƠN & AI OCR) -->
     <div id="admin-section" class="form-card hidden">
         <h3 id="form-title">Nhập Hóa Đơn Mới</h3>
         <form id="cattle-form" onsubmit="handleSave(event)">
             <input type="hidden" id="edit-id">
             
+            <div class="form-row" style="background: #1a1a2e; padding: 10px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #4a3b8c;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="color: #b39ddb;">Tải ảnh hóa đơn & Dùng AI Quét Tự Động:</label>
+                    <input type="file" id="input-file" accept="image/*">
+                </div>
+                <div class="form-group" style="margin-bottom:0; display: flex; align-items: flex-end;">
+                    <button type="button" class="btn btn-ai" id="btn-ocr" onclick="scanImageWithAI()">✨ Quét & Điền AI</button>
+                </div>
+            </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label>Tên hàng:</label>
@@ -112,23 +123,23 @@
                 </div>
                 <div class="form-group">
                     <label>Ghi chú / Trọng lượng:</label>
-                    <input type="text" id="input-weight" placeholder="VD: Bò đực đẹp">
+                    <input type="text" id="input-weight" placeholder="VD: 9x11.6">
                 </div>
             </div>
 
             <div class="form-group">
-                <label id="label-codes">Mã Số (Nhập tắt VD: 1-5, 7, 9-12):</label>
-                <input type="text" id="input-codes" required placeholder="Gõ: 1-5, 7, 9-12...">
+                <label id="label-codes">Mã Số (MTT):</label>
+                <input type="text" id="input-codes" required placeholder="VD: 2562, 2563, 2564...">
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Giá nhập (VNĐ hoặc VD: 9x0+4+4x2):</label>
+                    <label>Giá nhập (VNĐ):</label>
                     <input type="text" id="input-import-price" placeholder="VD: 9x0+4+4x2">
                 </div>
                 <div class="form-group">
                     <label>Giá bán (Thành tiền VNĐ):</label>
-                    <input type="text" id="input-selling-price" placeholder="VD: 9x0+4+3 hoặc 7000000">
+                    <input type="text" id="input-selling-price" placeholder="VD: 104400000 hoặc 104.400">
                 </div>
             </div>
 
@@ -150,15 +161,9 @@
                 </label>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Chọn Ảnh Hóa Đơn (Tự nén siêu nhẹ):</label>
-                    <input type="file" id="input-file" accept="image/*">
-                </div>
-                <div class="form-group">
-                    <label>Hoặc dán Link Ảnh thủ công:</label>
-                    <input type="text" id="input-image-url" placeholder="VD: images/hoadon.jpg hoặc link URL">
-                </div>
+            <div class="form-group">
+                <label>Link Ảnh thủ công (nếu không chọn file):</label>
+                <input type="text" id="input-image-url" placeholder="VD: link URL">
             </div>
 
             <button type="submit" class="btn btn-success" id="btn-save">Lưu Hóa Đơn</button>
@@ -200,6 +205,9 @@
 <script>
     const SUPABASE_URL = 'https://ldadlcpwhvqlwqtayxek.supabase.co'; 
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkYWRsY3B3aHZxbHdxdGF5eGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNzAzODgsImV4cCI6MjEwMjk0NjM4OH0.6jx324kJvqdcj8s0nQ5IHbi5T8qe3q-lkT44A_sA5FY';
+
+    // ĐIỀN GEMINI API KEY CỦA BẠN VÀO ĐÂY ĐỂ DÙNG TÍNH NĂNG QUÉT AI
+    const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -331,6 +339,82 @@
         }
     }
 
+    // TÍNH NĂNG ĐỌC ẢNH AI BẰNG GEMINI
+    async function scanImageWithAI() {
+        const fileInput = document.getElementById('input-file').files[0];
+        if (!fileInput) {
+            alert('Vui lòng chọn 1 tệp ảnh hóa đơn trước!');
+            return;
+        }
+
+        if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
+            alert('Vui lòng cấu hình GEMINI_API_KEY trong mã nguồn Javascript để dùng tính năng này!');
+            return;
+        }
+
+        const btnOcr = document.getElementById('btn-ocr');
+        btnOcr.disabled = true;
+        btnOcr.innerText = '⏳ AI Đang Đọc Ảnh...';
+
+        try {
+            const reader = new FileReader();
+            reader.readAsDataURL(fileInput);
+            reader.onload = async () => {
+                const base64Data = reader.result.split(',')[1];
+
+                const promptText = `Hãy phân tích bức ảnh bảng kê mua bán hàng hóa này và trích xuất dữ liệu thành định dạng JSON chuẩn.
+Return JSON strictly with the following fields:
+{
+  "item_name": "Tên hàng hóa (ví dụ: Bò)",
+  "weight_expr": "Trọng lượng/Công thức (ví dụ: 9x11.6)",
+  "code": "Các mã số MTT phân cách bằng dấu phẩy (ví dụ: 2562, 2563, 2564)",
+  "selling_price": "Số tiền tổng/thành tiền dạng số hoặc biểu thức (ví dụ: 104.400 hoặc 104400000)",
+  "date": "Ngày xuất định dạng YYYY-MM-DD"
+}`;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: promptText },
+                                { inline_data: { mime_type: fileInput.type || "image/jpeg", data: base64Data } }
+                            ]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                btnOcr.disabled = false;
+                btnOcr.innerText = '✨ Quét & Điền AI';
+
+                if (data.candidates && data.candidates[0]) {
+                    let text = data.candidates[0].content.parts[0].text;
+                    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                    let result = JSON.parse(text);
+
+                    if (result.item_name) document.getElementById('input-item-name').value = result.item_name;
+                    if (result.weight_expr) document.getElementById('input-weight').value = result.weight_expr;
+                    if (result.code) document.getElementById('input-codes').value = result.code;
+                    if (result.selling_price) document.getElementById('input-selling-price').value = result.selling_price;
+                    if (result.date) {
+                        document.getElementById('input-import-date').value = result.date;
+                        document.getElementById('input-export-date').value = result.date;
+                    }
+
+                    alert('✨ Đã quét và tự động điền dữ liệu thành công! Hãy kiểm tra lại trước khi lưu.');
+                } else {
+                    alert('AI không nhận diện được thông tin. Vui lòng thử lại.');
+                }
+            };
+        } catch (e) {
+            btnOcr.disabled = false;
+            btnOcr.innerText = '✨ Quét & Điền AI';
+            alert('Lỗi khi gọi AI OCR: ' + e.message);
+        }
+    }
+
     function toggleAuth() {
         if (isAdmin) {
             isAdmin = false;
@@ -387,7 +471,6 @@
         currentFilter = filter;
         let searchCodeQuery = document.getElementById('search-code').value.trim().toLowerCase();
 
-        // Vẫn tính tổng tiền bình thường từ cơ sở dữ liệu
         const { data: allDataForTotal } = await supabaseClient
             .from('cattle')
             .select('selling_price, is_paid');
@@ -524,7 +607,6 @@
             <div class="detail-row"><strong>Ghi chú / Trọng lượng:</strong> ${item.weight_expr || '--'}</div>
         `;
 
-        // Chỉ hiển thị giá bán & giá nhập khi là Admin
         if (isAdmin) {
             html += `
                 <div class="detail-row"><strong>Giá bán (Thành tiền):</strong> ${(item.selling_price || 0).toLocaleString('vi-VN')} VNĐ</div>
