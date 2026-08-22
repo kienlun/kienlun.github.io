@@ -62,7 +62,7 @@
 
 <div class="container">
     <h2>SỔ SÁCH THEO DÕI BÁN TRÂU BÒ</h2>
-    <h4>Quản Lý Sổ Sách - Tích hợp AI</h4>
+    <h4>Quản Lý Sổ Sách - AI</h4>
 
     <div class="summary-box">
         Tổng tiền chưa thanh toán: <span id="total-unpaid">0</span> VNĐ
@@ -252,7 +252,7 @@
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: "llama-3.2-11b-vision-instant",
+                    model: "qwen/qwen3.6-27b",
                     messages: [
                         {
                             role: "user",
