@@ -139,7 +139,6 @@
 <script>
     const SUPABASE_URL = 'https://ldadlcpwhvqlwqtayxek.supabase.co'; 
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkYWRsY3B3aHZxbHdxdGF5eGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNzAzODgsImV4cCI6MjEwMjk0NjM4OH0.6jx324kJvqdcj8s0nQ5IHbi5T8qe3q-lkT44A_sA5FY';
-    const ADMIN_PASSWORD = 'ngdacchien';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -214,21 +213,39 @@
         return formattedPrice;
     }
 
-    function toggleAuth() {
+    // ĐĂNG NHẬP XÁC THỰC QUA BẢNG USERS
+    async function toggleAuth() {
         if (isAdmin) {
             isAdmin = false;
             document.getElementById('btn-login-toggle').innerText = 'Đăng Nhập Admin';
             document.getElementById('admin-section').classList.add('hidden');
             document.querySelectorAll('.admin-col').forEach(el => el.classList.add('hidden'));
         } else {
-            let pass = prompt('Nhập mật khẩu Admin:');
-            if (pass === ADMIN_PASSWORD) {
+            let user = prompt('Nhập Tên Đăng Nhập:');
+            if (!user) return;
+            let pass = prompt('Nhập Mật Khẩu:');
+            if (!pass) return;
+
+            // Tra cứu bảng users trên Supabase
+            const { data, error } = await supabaseClient
+                .from('users')
+                .select('*')
+                .eq('username', user.trim())
+                .eq('password', pass.trim())
+                .maybeSingle();
+
+            if (error) {
+                alert('Lỗi kết nối CSDL: ' + error.message);
+                return;
+            }
+
+            if (data) {
                 isAdmin = true;
                 document.getElementById('btn-login-toggle').innerText = 'Đăng Xuất Admin';
                 document.getElementById('admin-section').classList.remove('hidden');
                 document.querySelectorAll('.admin-col').forEach(el => el.classList.remove('hidden'));
-            } else if (pass !== null) {
-                alert('Sai mật khẩu!');
+            } else {
+                alert('Tên đăng nhập hoặc mật khẩu không chính xác!');
             }
         }
     }
@@ -236,7 +253,6 @@
     async function loadData(filter = 'all') {
         currentFilter = filter;
 
-        // Tính tổng tiền chưa thanh toán
         const { data: allDataForTotal } = await supabaseClient
             .from('cattle')
             .select('selling_price, is_paid');
@@ -246,13 +262,7 @@
             document.getElementById('total-unpaid').innerText = totalUnpaid.toLocaleString('vi-VN');
         }
 
-        // Tải danh sách: ƯU TIÊN SẮP XẾP THEO NGÀY XUẤT MỚI NHẤT (export_date giảm dần)
-        let query = supabaseClient
-            .from('cattle')
-            .select('*')
-            .order('export_date', { ascending: false, nullsFirst: false })
-            .order('id', { ascending: false });
-
+        let query = supabaseClient.from('cattle').select('*');
         if (filter === 'unpaid') query = query.eq('is_paid', false);
 
         const { data, error } = await query;
@@ -264,16 +274,26 @@
         let tbody = document.getElementById('table-body');
         tbody.innerHTML = '';
 
-        if (data.length === 0) {
+        if (!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="9">Chưa có dữ liệu nào.</td></tr>';
             return;
         }
+
+        // Sắp xếp ngày xuất mới nhất lên đầu
+        data.sort((a, b) => {
+            let dateA = (a.export_date || a.import_date || a.created_at || '1970-01-01').substring(0, 10);
+            let dateB = (b.export_date || b.import_date || b.created_at || '1970-01-01').substring(0, 10);
+
+            if (dateA !== dateB) {
+                return dateB.localeCompare(dateA);
+            }
+            return b.id - a.id;
+        });
 
         data.forEach(item => {
             let importDisplay = formatPriceDisplay(item.import_price_raw, item.import_price);
             let sellingDisplay = formatPriceDisplay(item.selling_price_raw, item.selling_price);
 
-            // Xử lý mã số và đếm số lượng
             let codeList = expandCodeRanges(item.code || '');
             let displayCode = codeList.join(', ');
             let totalCount = codeList.length;
@@ -283,11 +303,9 @@
 
             let displayName = totalCount > 0 ? `${baseName} (${totalCount} con)` : baseName;
 
-            // Ngày Xuất
             let rawExportDate = item.export_date || item.import_date || item.created_at;
             let displayExportDate = formatDateDisplay(rawExportDate);
 
-            // Tính Lãi / Lỗ
             let importVal = item.import_price || 0;
             let sellingVal = item.selling_price || 0;
             let profit = sellingVal - importVal;
