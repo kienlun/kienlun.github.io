@@ -195,7 +195,8 @@
 
         const { data, error } = await query;
         if (error) {
-            alert('Lỗi kết nối CSDL!');
+            console.error('Lỗi chi tiết:', error);
+            alert('Lỗi CSDL: ' + error.message);
             return;
         }
 
