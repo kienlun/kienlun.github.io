@@ -340,91 +340,93 @@
 
     // TÍNH NĂNG ĐỌC ẢNH AI BẰNG GEMINI (LẤY KEY TỪ SUPABASE)
     async function scanImageWithAI() {
-        const fileInput = document.getElementById('input-file').files[0];
-        if (!fileInput) {
-            alert('Vui lòng chọn 1 tệp ảnh hóa đơn trước!');
-            return;
-        }
-    
-        const btnOcr = document.getElementById('btn-ocr');
-        btnOcr.disabled = true;
-        btnOcr.innerText = '⏳ Đang lấy Key & Đọc Ảnh...';
-    
-        try {
-            // 1. Tự động đọc GEMINI_KEY từ bảng system_config trên Supabase
-            const { data: configData, error: configError } = await supabaseClient
-                .from('system_config')
-                .select('value')
-                .eq('key', 'GEMINI_KEY')
-                .single();
-    
-            if (configError || !configData || !configData.value) {
-                alert('Lỗi: Chưa cấu hình GEMINI_KEY trong bảng system_config trên Supabase!');
-                btnOcr.disabled = false;
-                btnOcr.innerText = '✨ Quét & Điền AI';
-                return;
-            }
-    
-            const apiKey = configData.value;
-    
-            // 2. Chuyển ảnh sang Base64 và gửi cho Gemini API
-            const reader = new FileReader();
-            reader.readAsDataURL(fileInput);
-            reader.onload = async () => {
-                const base64Data = reader.result.split(',')[1];
-    
-                const promptText = `Hãy phân tích bức ảnh bảng kê mua bán hàng hóa này và trích xuất dữ liệu thành định dạng JSON chuẩn.
-    Return JSON strictly with the following fields:
-    {
-      "item_name": "Tên hàng hóa (ví dụ: Bò)",
-      "weight_expr": "Trọng lượng/Công thức (ví dụ: 9x11.6)",
-      "code": "Các mã số MTT phân cách bằng dấu phẩy (ví dụ: 2562, 2563, 2564)",
-      "selling_price": "Số tiền tổng/thành tiền dạng số hoặc biểu thức (ví dụ: 104.400 hoặc 104400000)",
-      "date": "Ngày xuất định dạng YYYY-MM-DD"
-    }`;
-    
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: promptText },
-                                { inline_data: { mime_type: fileInput.type || "image/jpeg", data: base64Data } }
-                            ]
-                        }]
-                    })
-                });
-    
-                const data = await response.json();
-                btnOcr.disabled = false;
-                btnOcr.innerText = '✨ Quét & Điền AI';
-    
-                if (data.candidates && data.candidates[0]) {
-                    let text = data.candidates[0].content.parts[0].text;
-                    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                    let result = JSON.parse(text);
-    
-                    if (result.item_name) document.getElementById('input-item-name').value = result.item_name;
-                    if (result.weight_expr) document.getElementById('input-weight').value = result.weight_expr;
-                    if (result.code) document.getElementById('input-codes').value = result.code;
-                    if (result.selling_price) document.getElementById('input-selling-price').value = result.selling_price;
-                    if (result.date) {
-                        document.getElementById('input-import-date').value = result.date;
-                        document.getElementById('input-export-date').value = result.date;
-                    }
-    
-                    alert('✨ Đã quét và tự động điền dữ liệu thành công! Hãy kiểm tra lại trước khi lưu.');
-                } else {
-                    alert('AI không nhận diện được thông tin. Vui lòng thử lại.');
-                }
-            };
-        } catch (e) {
+    const fileInput = document.getElementById('input-file').files[0];
+    if (!fileInput) {
+        alert('Vui lòng chọn 1 tệp ảnh hóa đơn trước!');
+        return;
+    }
+
+    const btnOcr = document.getElementById('btn-ocr');
+    btnOcr.disabled = true;
+    btnOcr.innerText = '⏳ Đang lấy Key & Đọc Ảnh...';
+
+    try {
+        const { data: configData, error: configError } = await supabaseClient
+            .from('system_config')
+            .select('value')
+            .eq('key', 'GEMINI_KEY')
+            .single();
+
+        if (configError || !configData || !configData.value) {
+            alert('Lỗi: Chưa cấu hình GEMINI_KEY trong bảng system_config trên Supabase!');
             btnOcr.disabled = false;
             btnOcr.innerText = '✨ Quét & Điền AI';
-            alert('Lỗi khi gọi AI OCR: ' + e.message);
+            return;
         }
+
+        const apiKey = configData.value;
+
+        const reader = new FileReader();
+        reader.readAsDataURL(fileInput);
+        reader.onload = async () => {
+            const base64Data = reader.result.split(',')[1];
+
+            const promptText = `Trích xuất thông tin từ hóa đơn này và trả về duy nhất một chuỗi JSON hợp lệ (không kèm Markdown, không ghi câu dẫn). 
+Cấu trúc JSON bắt buộc:
+{
+  "item_name": "Tên hàng hóa (ví dụ: Bò)",
+  "weight_expr": "Trọng lượng hoặc biểu thức (ví dụ: 9x11.6)",
+  "code": "Danh sách các mã số MTT phân cách bằng dấu phẩy",
+  "selling_price": "Thành tiền/Tổng tiền (ví dụ: 104.400)",
+  "date": "Ngày xuất dạng YYYY-MM-DD (ví dụ: 2026-08-21)"
+}`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: promptText },
+                            { inline_data: { mime_type: fileInput.type || "image/jpeg", data: base64Data } }
+                        ]
+                    }],
+                    // Yêu cầu Gemini trả về trực tiếp định dạng JSON
+                    generationConfig: {
+                        response_mime_type: "application/json"
+                    }
+                })
+            });
+
+            const data = await response.json();
+            btnOcr.disabled = false;
+            btnOcr.innerText = '✨ Quét & Điền AI';
+
+            if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                let rawText = data.candidates[0].content.parts[0].text;
+                let result = JSON.parse(rawText);
+
+                if (result.item_name) document.getElementById('input-item-name').value = result.item_name;
+                if (result.weight_expr) document.getElementById('input-weight').value = result.weight_expr;
+                if (result.code) document.getElementById('input-codes').value = result.code;
+                if (result.selling_price) document.getElementById('input-selling-price').value = result.selling_price;
+                if (result.date) {
+                    document.getElementById('input-import-date').value = result.date;
+                    document.getElementById('input-export-date').value = result.date;
+                }
+
+                alert('✨ Đã quét và tự động điền dữ liệu thành công!');
+            } else {
+                console.log('Chi tiết lỗi từ Gemini:', data);
+                alert('AI không nhận diện được thông tin. Bạn hãy mở Console (F12) để kiểm tra chi tiết phản hồi.');
+            }
+        };
+    } catch (e) {
+        btnOcr.disabled = false;
+        btnOcr.innerText = '✨ Quét & Điền AI';
+        alert('Lỗi xử lý OCR: ' + e.message);
     }
+}
     function toggleAuth() {
         if (isAdmin) {
             isAdmin = false;
