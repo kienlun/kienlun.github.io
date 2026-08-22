@@ -439,17 +439,17 @@
     }
 
     function resetForm() {
-    document.getElementById('cattle-form').reset();
-    document.getElementById('edit-id').value = '';
-    document.getElementById('form-title').innerText = 'Nhập Hóa Đơn Mới';
-    document.getElementById('btn-save').innerText = 'Lưu Hóa Đơn';
-    document.getElementById('btn-cancel').classList.add('hidden');
-    document.getElementById('input-import-date').valueAsDate = new Date();
-    document.getElementById('input-export-date').valueAsDate = new Date();
-    
-    // Đặt mặc định bỏ tích ô Đã thanh toán
-    document.getElementById('input-is-paid').checked = false; 
-}
+        document.getElementById('cattle-form').reset();
+        document.getElementById('edit-id').value = '';
+        document.getElementById('form-title').innerText = 'Nhập Hóa Đơn Mới';
+        document.getElementById('btn-save').innerText = 'Lưu Hóa Đơn';
+        document.getElementById('btn-cancel').classList.add('hidden');
+        document.getElementById('input-import-date').valueAsDate = new Date();
+        document.getElementById('input-export-date').valueAsDate = new Date();
+        
+        // Đặt mặc định bỏ tích ô Đã thanh toán
+        document.getElementById('input-is-paid').checked = false; 
+    }
 
     async function deleteItem(id) {
         if (confirm('Bạn chắc chắn muốn xóa?')) {
