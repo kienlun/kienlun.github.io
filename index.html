@@ -339,30 +339,42 @@
         }
     }
 
-    // TÍNH NĂNG ĐỌC ẢNH AI BẰNG GEMINI
-    async function scanImageWithAI() {
-        const fileInput = document.getElementById('input-file').files[0];
-        if (!fileInput) {
-            alert('Vui lòng chọn 1 tệp ảnh hóa đơn trước!');
+    // TÍNH NĂNG ĐỌC ẢNH AI BẰNG GEMINI (LẤY KEY TỪ SUPABASE)
+async function scanImageWithAI() {
+    const fileInput = document.getElementById('input-file').files[0];
+    if (!fileInput) {
+        alert('Vui lòng chọn 1 tệp ảnh hóa đơn trước!');
+        return;
+    }
+
+    const btnOcr = document.getElementById('btn-ocr');
+    btnOcr.disabled = true;
+    btnOcr.innerText = '⏳ Đang lấy Key & Đọc Ảnh...';
+
+    try {
+        // 1. Tự động đọc GEMINI_KEY từ bảng system_config trên Supabase
+        const { data: configData, error: configError } = await supabaseClient
+            .from('system_config')
+            .select('value')
+            .eq('key', 'GEMINI_KEY')
+            .single();
+
+        if (configError || !configData || !configData.value) {
+            alert('Lỗi: Chưa cấu hình GEMINI_KEY trong bảng system_config trên Supabase!');
+            btnOcr.disabled = false;
+            btnOcr.innerText = '✨ Quét & Điền AI';
             return;
         }
 
-        if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
-            alert('Vui lòng cấu hình GEMINI_API_KEY trong mã nguồn Javascript để dùng tính năng này!');
-            return;
-        }
+        const apiKey = configData.value;
 
-        const btnOcr = document.getElementById('btn-ocr');
-        btnOcr.disabled = true;
-        btnOcr.innerText = '⏳ AI Đang Đọc Ảnh...';
+        // 2. Chuyển ảnh sang Base64 và gửi cho Gemini API
+        const reader = new FileReader();
+        reader.readAsDataURL(fileInput);
+        reader.onload = async () => {
+            const base64Data = reader.result.split(',')[1];
 
-        try {
-            const reader = new FileReader();
-            reader.readAsDataURL(fileInput);
-            reader.onload = async () => {
-                const base64Data = reader.result.split(',')[1];
-
-                const promptText = `Hãy phân tích bức ảnh bảng kê mua bán hàng hóa này và trích xuất dữ liệu thành định dạng JSON chuẩn.
+            const promptText = `Hãy phân tích bức ảnh bảng kê mua bán hàng hóa này và trích xuất dữ liệu thành định dạng JSON chuẩn.
 Return JSON strictly with the following fields:
 {
   "item_name": "Tên hàng hóa (ví dụ: Bò)",
@@ -372,49 +384,48 @@ Return JSON strictly with the following fields:
   "date": "Ngày xuất định dạng YYYY-MM-DD"
 }`;
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: promptText },
-                                { inline_data: { mime_type: fileInput.type || "image/jpeg", data: base64Data } }
-                            ]
-                        }]
-                    })
-                });
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: promptText },
+                            { inline_data: { mime_type: fileInput.type || "image/jpeg", data: base64Data } }
+                        ]
+                    }]
+                })
+            });
 
-                const data = await response.json();
-                btnOcr.disabled = false;
-                btnOcr.innerText = '✨ Quét & Điền AI';
-
-                if (data.candidates && data.candidates[0]) {
-                    let text = data.candidates[0].content.parts[0].text;
-                    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                    let result = JSON.parse(text);
-
-                    if (result.item_name) document.getElementById('input-item-name').value = result.item_name;
-                    if (result.weight_expr) document.getElementById('input-weight').value = result.weight_expr;
-                    if (result.code) document.getElementById('input-codes').value = result.code;
-                    if (result.selling_price) document.getElementById('input-selling-price').value = result.selling_price;
-                    if (result.date) {
-                        document.getElementById('input-import-date').value = result.date;
-                        document.getElementById('input-export-date').value = result.date;
-                    }
-
-                    alert('✨ Đã quét và tự động điền dữ liệu thành công! Hãy kiểm tra lại trước khi lưu.');
-                } else {
-                    alert('AI không nhận diện được thông tin. Vui lòng thử lại.');
-                }
-            };
-        } catch (e) {
+            const data = await response.json();
             btnOcr.disabled = false;
             btnOcr.innerText = '✨ Quét & Điền AI';
-            alert('Lỗi khi gọi AI OCR: ' + e.message);
-        }
-    }
 
+            if (data.candidates && data.candidates[0]) {
+                let text = data.candidates[0].content.parts[0].text;
+                text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                let result = JSON.parse(text);
+
+                if (result.item_name) document.getElementById('input-item-name').value = result.item_name;
+                if (result.weight_expr) document.getElementById('input-weight').value = result.weight_expr;
+                if (result.code) document.getElementById('input-codes').value = result.code;
+                if (result.selling_price) document.getElementById('input-selling-price').value = result.selling_price;
+                if (result.date) {
+                    document.getElementById('input-import-date').value = result.date;
+                    document.getElementById('input-export-date').value = result.date;
+                }
+
+                alert('✨ Đã quét và tự động điền dữ liệu thành công! Hãy kiểm tra lại trước khi lưu.');
+            } else {
+                alert('AI không nhận diện được thông tin. Vui lòng thử lại.');
+            }
+        };
+    } catch (e) {
+        btnOcr.disabled = false;
+        btnOcr.innerText = '✨ Quét & Điền AI';
+        alert('Lỗi khi gọi AI OCR: ' + e.message);
+    }
+}
     function toggleAuth() {
         if (isAdmin) {
             isAdmin = false;
