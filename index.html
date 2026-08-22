@@ -68,8 +68,8 @@
             </div>
 
             <div class="form-group">
-                <label id="label-codes">Nhập tắt Mã số (VD: 200 - 203, 207, 210-212):</label>
-                <input type="text" id="input-codes" required placeholder="Gõ 200 - 203, 207, 210-212...">
+                <label id="label-codes">Mã Số (Nhập tắt VD: 1-5, 7, 9-12):</label>
+                <input type="text" id="input-codes" required placeholder="Gõ: 1-5, 7, 9-12...">
             </div>
 
             <div class="form-row">
@@ -144,14 +144,19 @@
     document.getElementById('input-import-date').valueAsDate = new Date();
     document.getElementById('input-export-date').valueAsDate = new Date();
 
-    // === HÀM TỰ ĐỘNG BUNG DÃY SỐ TẮT THÀNH DÃY SỐ ĐẦY ĐỦ ===
+    // === HÀM XỬ LÝ TRIỆT ĐỂ CHUỖI VIẾT TẮT SANG DÃY SỐ ĐẦY ĐỦ ===
     function expandCodeRanges(inputStr) {
         if (!inputStr) return '';
-        let parts = inputStr.split(',');
+        
+        // Cắt theo dấu phẩy hoặc xuống dòng
+        let parts = inputStr.toString().split(/,|\n/);
         let resultCodes = [];
 
         parts.forEach(part => {
             part = part.trim();
+            if (!part) return;
+
+            // Xử lý dấu gạch ngang (chấp nhận cả khoảng trắng ở giữa như "1 - 5" hay "1-5")
             if (part.includes('-')) {
                 let range = part.split('-');
                 if (range.length === 2) {
@@ -167,7 +172,7 @@
                 } else {
                     resultCodes.push(part);
                 }
-            } else if (part !== '') {
+            } else {
                 resultCodes.push(part);
             }
         });
@@ -243,10 +248,13 @@
             let importDisplay = formatPriceDisplay(item.import_price_raw, item.import_price);
             let sellingDisplay = formatPriceDisplay(item.selling_price_raw, item.selling_price);
 
+            // Tự động bung mã đầy đủ ngay cả với các dòng dữ liệu cũ đã lưu
+            let displayCode = expandCodeRanges(item.code || '');
+
             let row = `
                 <tr>
                     <td><strong>${item.item_name || 'Bò/Trâu'}</strong></td>
-                    <td class="code-cell">${item.code || '--'}</td>
+                    <td class="code-cell">${displayCode || '--'}</td>
                     <td><strong>${item.weight_expr || '--'}</strong></td>
                     <td class="admin-col ${isAdmin ? '' : 'hidden'}">${importDisplay}</td>
                     <td>${sellingDisplay}</td>
@@ -273,7 +281,7 @@
         let editId = document.getElementById('edit-id').value;
         
         let rawCodeInput = document.getElementById('input-codes').value.trim();
-        // Tự động bung dãy mã số
+        // Tự động bung dãy mã số đầy đủ
         let expandedCodes = expandCodeRanges(rawCodeInput);
 
         let payload = {
