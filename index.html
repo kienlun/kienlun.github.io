@@ -22,9 +22,9 @@
         th { background: #2a2a2a; color: #ffffff; }
         .status-paid { color: #2ea043; font-weight: bold; }
         .status-unpaid { color: #f85149; font-weight: bold; }
-        .profit-pos { color: #2ea043; font-weight: bold; } /* Màu xanh khi lãi */
-        .profit-neg { color: #f85149; font-weight: bold; } /* Màu đỏ khi lỗ */
-        .profit-zero { color: #8b949e; font-weight: bold; } /* Màu xám khi hòa vốn */
+        .profit-pos { color: #2ea043; font-weight: bold; }
+        .profit-neg { color: #f85149; font-weight: bold; }
+        .profit-zero { color: #8b949e; font-weight: bold; }
         .form-card { background: #252525; padding: 18px; border-radius: 6px; border: 1px solid #333; margin-bottom: 25px; }
         .form-row { display: flex; gap: 15px; }
         .form-group { margin-bottom: 12px; flex: 1; }
@@ -42,7 +42,6 @@
 <div class="container">
     <h2>SỔ SÁCH THEO DÕI BÁN TRÂU BÒ</h2>
 
-    <!-- KHỐI TỔNG TIỀN CHƯA THANH TOÁN -->
     <div class="summary-box">
         Tổng tiền chưa thanh toán: <span id="total-unpaid">0</span> VNĐ
     </div>
@@ -64,7 +63,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>Tên hàng:</label>
-                    <input type="text" id="input-item-name" placeholder="VD: Bò (9 con)">
+                    <input type="text" id="input-item-name" placeholder="VD: Bò">
                 </div>
                 <div class="form-group">
                     <label>Ghi chú / Trọng lượng:</label>
@@ -160,8 +159,9 @@
         return dateVal;
     }
 
+    // Bung mã viết tắt và trả về mảng mã
     function expandCodeRanges(inputStr) {
-        if (!inputStr) return '';
+        if (!inputStr) return [];
         let parts = inputStr.toString().split(/,|\n/);
         let resultCodes = [];
 
@@ -189,7 +189,7 @@
             }
         });
 
-        return resultCodes.join(', ');
+        return resultCodes;
     }
 
     function calculatePrice(input) {
@@ -237,7 +237,7 @@
     async function loadData(filter = 'all') {
         currentFilter = filter;
 
-        // BƯỚC 1: Tính toán tổng tiền chưa thanh toán
+        // Tính tổng tiền chưa thanh toán
         const { data: allDataForTotal } = await supabaseClient
             .from('cattle')
             .select('selling_price, is_paid');
@@ -247,7 +247,7 @@
             document.getElementById('total-unpaid').innerText = totalUnpaid.toLocaleString('vi-VN');
         }
 
-        // BƯỚC 2: Tải danh sách
+        // Tải danh sách
         let query = supabaseClient.from('cattle').select('*').order('id', { ascending: false });
         if (filter === 'unpaid') query = query.eq('is_paid', false);
 
@@ -269,13 +269,24 @@
             let importDisplay = formatPriceDisplay(item.import_price_raw, item.import_price);
             let sellingDisplay = formatPriceDisplay(item.selling_price_raw, item.selling_price);
 
-            let displayCode = expandCodeRanges(item.code || '');
-            
+            // Xử lý mã số và đếm số lượng
+            let codeList = expandCodeRanges(item.code || '');
+            let displayCode = codeList.join(', ');
+            let totalCount = codeList.length;
+
+            // Lấy tên hàng gốc
+            let baseName = item.item_name || 'Bò';
+            // Làm sạch nếu tên hàng cũ từng có chứa số con trong ngoặc
+            baseName = baseName.replace(/\s*\(\d+\s*con\)/gi, '').trim();
+
+            // Tự động thêm (X con) vào Tên Hàng nếu có danh sách mã số
+            let displayName = totalCount > 0 ? `${baseName} (${totalCount} con)` : baseName;
+
             // Ngày Xuất
             let rawExportDate = item.export_date || item.import_date || item.created_at;
             let displayExportDate = formatDateDisplay(rawExportDate);
 
-            // TÍNH LÃI / LỖ (Giá bán - Giá nhập)
+            // Tính Lãi / Lỗ
             let importVal = item.import_price || 0;
             let sellingVal = item.selling_price || 0;
             let profit = sellingVal - importVal;
@@ -292,7 +303,7 @@
 
             let row = `
                 <tr>
-                    <td><strong>${item.item_name || 'Bò/Trâu'}</strong></td>
+                    <td><strong>${displayName}</strong></td>
                     <td class="code-cell">${displayCode || '--'}</td>
                     <td class="date-cell">${displayExportDate}</td>
                     <td class="admin-col ${isAdmin ? '' : 'hidden'}">${importDisplay}</td>
@@ -321,7 +332,7 @@
         let editId = document.getElementById('edit-id').value;
         
         let rawCodeInput = document.getElementById('input-codes').value.trim();
-        let expandedCodes = expandCodeRanges(rawCodeInput);
+        let expandedCodes = expandCodeRanges(rawCodeInput).join(', ');
 
         let importDateVal = document.getElementById('input-import-date').value || new Date().toISOString().split('T')[0];
         let exportDateVal = document.getElementById('input-export-date').value || importDateVal;
@@ -355,7 +366,11 @@
 
     function editItem(item) {
         document.getElementById('edit-id').value = item.id;
-        document.getElementById('input-item-name').value = item.item_name || '';
+        
+        // Loại bỏ phần (X con) nếu có khi sửa để tránh bị nhân đôi
+        let cleanName = (item.item_name || '').replace(/\s*\(\d+\s*con\)/gi, '').trim();
+        document.getElementById('input-item-name').value = cleanName;
+        
         document.getElementById('input-weight').value = item.weight_expr || '';
         document.getElementById('input-codes').value = item.code || '';
         document.getElementById('input-import-price').value = item.import_price_raw || item.import_price || '';
