@@ -29,7 +29,7 @@
         .form-row { display: flex; gap: 15px; }
         .form-group { margin-bottom: 12px; flex: 1; }
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #ccc; }
-        input[type="text"], input[type="date"] { width: 100%; padding: 8px; border: 1px solid #444; background: #121212; color: #fff; border-radius: 4px; }
+        input[type="text"], input[type="password"], input[type="date"] { width: 100%; padding: 8px; border: 1px solid #444; background: #121212; color: #fff; border-radius: 4px; }
         .hidden { display: none !important; }
         img.thumb { max-width: 60px; height: auto; border-radius: 4px; }
         .expr-tag { display: block; color: #58a6ff; font-size: 12px; font-style: italic; margin-bottom: 2px; }
@@ -53,18 +53,19 @@
             <button id="btn-login-toggle" class="btn btn-success" onclick="toggleAuth()">Đăng Nhập Admin</button>
         </div>
     </div>
-    <!-- BẢNG POPUP ĐĂNG NHẬP -->
+
+    <!-- POPUP ĐĂNG NHẬP ADMIN -->
     <div id="login-modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;">
         <div style="background: #252525; padding: 25px; border-radius: 8px; border: 1px solid #444; width: 320px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
             <h3 style="margin-top: 0; text-align: center; color: #fff;">Đăng Nhập Admin</h3>
             <form onsubmit="handleLoginSubmit(event)">
                 <div style="margin-bottom: 12px;">
                     <label style="display: block; margin-bottom: 5px; color: #ccc;">Tài khoản:</label>
-                    <input type="text" id="modal-username" required style="width: 100%; padding: 8px; background: #121212; border: 1px solid #444; color: #fff; border-radius: 4px;">
+                    <input type="text" id="modal-username" required placeholder="Nhập tài khoản...">
                 </div>
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 5px; color: #ccc;">Mật khẩu:</label>
-                    <input type="password" id="modal-password" required style="width: 100%; padding: 8px; background: #121212; border: 1px solid #444; color: #fff; border-radius: 4px;">
+                    <input type="password" id="modal-password" required placeholder="Nhập mật khẩu...">
                 </div>
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
                     <button type="button" class="btn btn-secondary" onclick="closeLoginModal()">Hủy</button>
@@ -74,7 +75,7 @@
         </div>
     </div>
 
-    <!-- KHU VỰC ADMIN -->
+    <!-- KHU VỰC ADMIN (NHẬP HÓA ĐƠN) -->
     <div id="admin-section" class="form-card hidden">
         <h3 id="form-title">Nhập Hóa Đơn Mới</h3>
         <form id="cattle-form" onsubmit="handleSave(event)">
@@ -233,51 +234,52 @@
         return formattedPrice;
     }
 
-    // ĐĂNG NHẬP XÁC THỰC QUA BẢNG USERS
+    // ĐĂNG NHẬP QUA MODAL POPUP
     function toggleAuth() {
-    if (isAdmin) {
-        isAdmin = false;
-        document.getElementById('btn-login-toggle').innerText = 'Đăng Nhập Admin';
-        document.getElementById('admin-section').classList.add('hidden');
-        document.querySelectorAll('.admin-col').forEach(el => el.classList.add('hidden'));
-    } else {
-        document.getElementById('modal-username').value = '';
-        document.getElementById('modal-password').value = '';
-        document.getElementById('login-modal').classList.remove('hidden');
-    }
-}
-
-function closeLoginModal() {
-    document.getElementById('login-modal').classList.add('hidden');
-}
-
-async function handleLoginSubmit(e) {
-    e.preventDefault();
-    let user = document.getElementById('modal-username').value.trim();
-    let pass = document.getElementById('modal-password').value.trim();
-
-    const { data, error } = await supabaseClient
-        .from('users')
-        .select('*')
-        .eq('username', user)
-        .eq('password', pass)
-        .maybeSingle();
-
-    if (error) {
-        alert('Lỗi kết nối CSDL: ' + error.message);
-        return;
+        if (isAdmin) {
+            isAdmin = false;
+            document.getElementById('btn-login-toggle').innerText = 'Đăng Nhập Admin';
+            document.getElementById('admin-section').classList.add('hidden');
+            document.querySelectorAll('.admin-col').forEach(el => el.classList.add('hidden'));
+        } else {
+            document.getElementById('modal-username').value = '';
+            document.getElementById('modal-password').value = '';
+            document.getElementById('login-modal').classList.remove('hidden');
+        }
     }
 
-    if (data) {
-        isAdmin = true;
-        closeLoginModal();
-        document.getElementById('btn-login-toggle').innerText = 'Đăng Xuất Admin';
-        document.getElementById('admin-section').classList.remove('hidden');
-        document.querySelectorAll('.admin-col').forEach(el => el.classList.remove('hidden'));
-    } else {
-        alert('Tên đăng nhập hoặc mật khẩu không chính xác!');
+    function closeLoginModal() {
+        document.getElementById('login-modal').classList.add('hidden');
     }
-}
+
+    async function handleLoginSubmit(e) {
+        e.preventDefault();
+        let user = document.getElementById('modal-username').value.trim();
+        let pass = document.getElementById('modal-password').value.trim();
+
+        const { data, error } = await supabaseClient
+            .from('users')
+            .select('*')
+            .eq('username', user)
+            .eq('password', pass)
+            .maybeSingle();
+
+        if (error) {
+            alert('Lỗi kết nối CSDL: ' + error.message);
+            return;
+        }
+
+        if (data) {
+            isAdmin = true;
+            closeLoginModal();
+            document.getElementById('btn-login-toggle').innerText = 'Đăng Xuất Admin';
+            document.getElementById('admin-section').classList.remove('hidden');
+            document.querySelectorAll('.admin-col').forEach(el => el.classList.remove('hidden'));
+        } else {
+            alert('Tên đăng nhập hoặc mật khẩu không chính xác!');
+        }
+    }
+
     async function loadData(filter = 'all') {
         currentFilter = filter;
 
