@@ -53,12 +53,12 @@
 
     <!-- KHU VỰC ADMIN -->
     <div id="admin-section" class="form-card hidden">
-        <h3 id="form-title">Thêm Mới / Nhập Hàng Loạt</h3>
+        <h3 id="form-title">Thêm Mới / Nhập Sổ Sách</h3>
         <form id="cattle-form" onsubmit="handleSave(event)">
             <input type="hidden" id="edit-id">
             <div class="form-group">
-                <label id="label-codes">Chuỗi mã số (VD: 1 - 5, 7, 9 - 12):</label>
-                <input type="text" id="input-codes" required placeholder="VD: 1 - 5, 7, 9 - 12">
+                <label id="label-codes">Mã số (VD: 2562, 2563, 2564):</label>
+                <input type="text" id="input-codes" required placeholder="Gõ danh sách mã như hình...">
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -116,7 +116,6 @@
 </div>
 
 <script>
-    // === 1. CẤU HÌNH SUPABASE ===
     const SUPABASE_URL = 'https://ldadlcpwhvqlwqtayxek.supabase.co'; 
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkYWRsY3B3aHZxbHdxdGF5eGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNzAzODgsImV4cCI6MjEwMjk0NjM4OH0.6jx324kJvqdcj8s0nQ5IHbi5T8qe3q-lkT44A_sA5FY';
     const ADMIN_PASSWORD = 'ngdacchien';
@@ -129,7 +128,6 @@
     document.getElementById('input-import-date').valueAsDate = new Date();
     document.getElementById('input-export-date').valueAsDate = new Date();
 
-    // === 2. HÀM TÍNH TOÁN GIÁ THÔNG MINH ===
     function calculatePrice(input) {
         if (!input) return 0;
         let expr = input.toString().replace(/,/g, '.').toLowerCase().replace(/x/g, '*').trim();
@@ -143,7 +141,6 @@
         }
     }
 
-    // Định dạng hiển thị: Nếu có phép tính (+ - * x /) mới hiện "chuỗi = giá"
     function formatPriceDisplay(rawInput, numericPrice) {
         let formattedPrice = (numericPrice || 0).toLocaleString('vi-VN');
         if (!rawInput) return formattedPrice;
@@ -155,35 +152,6 @@
         return formattedPrice;
     }
 
-    // === 3. XỬ LÝ CHUỖI MÃ SỐ CHUẨN XÁC (Sửa lỗi khoảng trắng) ===
-    function parseCodes(input) {
-        let codes = [];
-        if (!input) return codes;
-        
-        // Cắt theo dấu phẩy
-        let parts = input.toString().split(',');
-        parts.forEach(part => {
-            part = part.trim();
-            // Xử lý dải khoảng cách có hoặc không có khoảng trắng (VD: 1 - 5, 9-12)
-            if (part.includes('-')) {
-                let range = part.split('-');
-                if (range.length === 2) {
-                    let start = parseInt(range[0].trim());
-                    let end = parseInt(range[1].trim());
-                    if (!isNaN(start) && !isNaN(end) && start > 0 && end >= start) {
-                        for (let i = start; i <= end; i++) codes.push(i);
-                    }
-                }
-            } else {
-                let val = parseInt(part);
-                if (!isNaN(val) && val > 0) codes.push(val);
-            }
-        });
-        // Loại bỏ mã trùng lặp và sắp xếp thứ tự
-        return [...new Set(codes)].sort((a, b) => a - b);
-    }
-
-    // === 4. ĐĂNG NHẬP ADMIN ===
     function toggleAuth() {
         if (isAdmin) {
             isAdmin = false;
@@ -203,10 +171,9 @@
         }
     }
 
-    // === 5. TẢI DỮ LIỆU TỪ SUPABASE ===
     async function loadData(filter = 'all') {
         currentFilter = filter;
-        let query = supabaseClient.from('cattle').select('*').order('code', { ascending: true });
+        let query = supabaseClient.from('cattle').select('*').order('id', { ascending: false });
         if (filter === 'unpaid') {
             query = query.eq('is_paid', false);
         }
@@ -263,10 +230,11 @@
         return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
     }
 
-    // === 6. LƯU DỮ LIỆU VÀO SUPABASE ===
+    // === LƯU GIỮ NGUYÊN CHUỖI MÃ SỐ VÀ PHÉP TÍNH ===
     async function handleSave(e) {
         e.preventDefault();
         let editId = document.getElementById('edit-id').value;
+        let codeStr = document.getElementById('input-codes').value.trim();
         
         let importRaw = String(document.getElementById('input-import-price').value || '').trim();
         let sellingRaw = String(document.getElementById('input-selling-price').value || '').trim();
@@ -279,7 +247,8 @@
         let isPaid = document.getElementById('input-is-paid').checked;
         let imageUrl = document.getElementById('input-image-url').value.trim() || null;
 
-        let baseData = {
+        let payload = {
+            code: codeStr, 
             import_price: importPrice, 
             import_price_raw: importRaw,
             selling_price: sellingPrice,
@@ -291,41 +260,24 @@
         };
 
         if (editId) {
-            let code = parseInt(document.getElementById('input-codes').value);
-            const { error } = await supabaseClient.from('cattle').update({
-                code, 
-                ...baseData
-            }).eq('id', editId);
-            
+            const { error } = await supabaseClient.from('cattle').update(payload).eq('id', editId);
             if (error) {
                 alert('Lỗi cập nhật: ' + error.message);
                 return;
             }
         } else {
-            let codes = parseCodes(document.getElementById('input-codes').value);
-            if (codes.length === 0) {
-                alert('Mã số không hợp lệ! Vui lòng kiểm tra lại chuỗi mã số nhập vào.');
-                return;
-            }
-
-            let insertData = codes.map(code => ({
-                code, 
-                ...baseData
-            }));
-
-            const { error } = await supabaseClient.from('cattle').upsert(insertData, { onConflict: 'code' });
+            const { error } = await supabaseClient.from('cattle').insert([payload]);
             if (error) {
                 alert('Lỗi thêm dữ liệu: ' + error.message);
                 return;
             }
         }
 
-        alert('Đã lưu thành công!');
+        alert('Đã lưu vào sổ thành công!');
         resetForm();
         loadData(currentFilter);
     }
 
-    // === 7. SỬA & XÓA ===
     function editItem(item) {
         document.getElementById('edit-id').value = item.id;
         document.getElementById('input-codes').value = item.code;
@@ -338,8 +290,7 @@
         document.getElementById('input-is-paid').checked = item.is_paid;
         document.getElementById('input-image-url').value = item.image_url || '';
 
-        document.getElementById('form-title').innerText = 'Chỉnh Sửa Mã: ' + item.code;
-        document.getElementById('label-codes').innerText = 'Mã số:';
+        document.getElementById('form-title').innerText = 'Chỉnh Sửa Dòng Số: ' + item.code;
         document.getElementById('btn-save').innerText = 'Cập Nhật';
         document.getElementById('btn-cancel').classList.remove('hidden');
     }
@@ -347,8 +298,7 @@
     function resetForm() {
         document.getElementById('cattle-form').reset();
         document.getElementById('edit-id').value = '';
-        document.getElementById('form-title').innerText = 'Thêm Mới / Nhập Hàng Loạt';
-        document.getElementById('label-codes').innerText = 'Chuỗi mã số (VD: 1 - 5, 7, 9 - 12):';
+        document.getElementById('form-title').innerText = 'Thêm Mới / Nhập Sổ Sách';
         document.getElementById('btn-save').innerText = 'Lưu Vào Sổ Sách';
         document.getElementById('btn-cancel').classList.add('hidden');
         document.getElementById('input-import-date').valueAsDate = new Date();
@@ -356,7 +306,7 @@
     }
 
     async function deleteItem(id) {
-        if (confirm('Bạn có chắc muốn xóa mã này?')) {
+        if (confirm('Bạn có chắc muốn xóa dòng này?')) {
             await supabaseClient.from('cattle').delete().eq('id', id);
             loadData(currentFilter);
         }
